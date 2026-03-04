@@ -1,8 +1,7 @@
 package dev.isira.webaudit.webaudit.services.impl;
 
-import com.microsoft.playwright.Browser;
-import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.Playwright;
 import dev.isira.webaudit.webaudit.models.WebAuditResult;
 import dev.isira.webaudit.webaudit.services.WebAuditService;
 import lombok.RequiredArgsConstructor;
@@ -18,8 +17,6 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class PlaywrightWebAuditService implements WebAuditService {
-    private final Browser browser;
-
     private static String stripScriptsAndStylesInternal(Page page) {
         page.evaluate("() => {" +
                 "  document.querySelectorAll('script, style').forEach(el => el.remove());" +
@@ -144,8 +141,11 @@ public class PlaywrightWebAuditService implements WebAuditService {
     }
 
     private <T> T runOnPage(String url, PageConsumer<T> consumer) {
-        try (BrowserContext context = browser.newContext()) {
-            final var page = context.newPage();
+        try (
+                final var playwright = Playwright.create();
+                final var browser = playwright.chromium().launch()
+        ) {
+            final var page = browser.newPage();
             page.navigate(url);
             page.waitForLoadState();
             return consumer.accept(page);
