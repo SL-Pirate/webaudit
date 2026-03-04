@@ -2,115 +2,121 @@ package dev.isira.webaudit.webaudit.services.impl;
 
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
+import com.microsoft.playwright.Page;
 import dev.isira.webaudit.webaudit.models.WebAuditResult;
 import dev.isira.webaudit.webaudit.services.AiService;
 import dev.isira.webaudit.webaudit.services.WebAuditService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.MatchResult;
-import java.util.regex.Pattern;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PlaywrightWebAuditService implements WebAuditService {
-    private static final Pattern SCRIPT_STYLE_PATTERN = Pattern.compile(
-            "<(script|style)[^>]*>.*?</\\1>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL
-    );
-    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
-    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
-    private static final List<String> CTA_KEYWORDS = List.of(
-            "buy", "sign up", "subscribe", "register", "get started", "download",
-            "try", "learn more", "contact", "request", "book", "order", "start",
-            "join", "apply", "claim", "free trial", "demo", "add to cart", "shop now"
-    );
-
     private final Browser browser;
     private final AiService aiService;
 
+    private static String stripScriptsAndStylesInternal(Page page) {
+        page.evaluate("() => {" +
+                "  document.querySelectorAll('script, style').forEach(el => el.remove());" +
+                "}");
+
+        return page.content();
+    }
+
     @Override
     public String readContent(String url) {
-        try (BrowserContext context = browser.newContext()) {
-            final var page = context.newPage();
-            page.navigate(url);
-            page.waitForLoadState();
-            return page.content();
-        }
+        return runOnPage(url, Page::content);
     }
 
     @Override
-    public String stripHtml(String html) {
-        final var noScriptsOrStyles = stripScriptsAndStyles(html);
-        final var noTags = HTML_TAG_PATTERN.matcher(noScriptsOrStyles).replaceAll(" ");
-        return WHITESPACE_PATTERN.matcher(noTags).replaceAll(" ").trim();
+    public String stripHtml(String url) {
+        return runOnPage(url, (page) -> page.innerText("body"));
     }
 
     @Override
-    public String stripScriptsAndStyles(String html) {
-        return SCRIPT_STYLE_PATTERN.matcher(html).replaceAll("");
+    public String stripScriptsAndStyles(String url) {
+        return runOnPage(url, PlaywrightWebAuditService::stripScriptsAndStylesInternal);
     }
 
     @Override
     public WebAuditResult.FactualMetrics getFactualMetrics(String url) {
-        final var html = readContent(url);
-        final var cleanedHtml = stripScriptsAndStyles(html);
-        final var plainText = stripHtml(html);
+        return runOnPage(url, (page) -> {
+            // Remove script/style elements so they don't interfere with metric extraction
+            stripScriptsAndStylesInternal(page);
 
-        final var wordCount = countWords(plainText);
-        final var headingCounts = countHeadings(cleanedHtml);
-        final var ctaCount = countCtas(cleanedHtml);
+            final var plainText = page.innerText("body");
+            final var wordCount = countWords(plainText);
+            final var headingCounts = countHeadings(page);
+            final var ctaCount = countCtas(page);
 
-        final var baseUri = URI.create(url);
-        final var host = baseUri.getHost();
-        int internalLinksCount = 0;
-        int externalLinksCount = 0;
+            // Link analysis – internal vs external
+            final var baseUri = URI.create(url);
+            final var host = baseUri.getHost();
+            var internalLinksCount = 0;
+            var externalLinksCount = 0;
 
-        final var hrefs = extractAttributeValues(cleanedHtml, "a", "href");
-        for (final var href : hrefs) {
-            if (href.isEmpty() || href.startsWith("#") || href.startsWith("javascript:")) {
-                continue;
+            @SuppressWarnings("unchecked") final List<String> allHrefs = (List<String>) page.locator("a[href]")
+                    .evaluateAll("els => els.map(e => e.getAttribute('href') || '')");
+
+            for (final var href : allHrefs) {
+                if (href.isEmpty() || href.startsWith("#") || href.startsWith("javascript:")) {
+                    continue;
+                }
+                try {
+                    final var linkUri = URI.create(href);
+                    if (linkUri.isAbsolute()) {
+                        if (host.equalsIgnoreCase(linkUri.getHost())) {
+                            internalLinksCount++;
+                        } else {
+                            externalLinksCount++;
+                        }
+                    } else {
+                        // Relative links are internal
+                        internalLinksCount++;
+                    }
+                } catch (IllegalArgumentException e) {
+                    log.warn("Skipping invalid URL in href: {}", href);
+                }
             }
-            if (href.startsWith("/") || href.startsWith("./") || href.startsWith("../") || href.contains(host)) {
-                internalLinksCount++;
-            } else if (href.startsWith("http://") || href.startsWith("https://")) {
-                externalLinksCount++;
-            } else {
-                internalLinksCount++;
-            }
-        }
 
-        final var imgTags = extractTags(cleanedHtml, "img");
-        final var totalImages = imgTags.size();
-        final var missingAlt = imgTags.stream()
-                .filter(tag -> !tag.toLowerCase().contains("alt=") || tag.matches("(?i).*alt\\s*=\\s*[\"']\\s*[\"'].*"))
-                .count();
-        final var percentMissingAlt = totalImages > 0 ? (missingAlt * 100.0) / totalImages : 0.0;
+            // Images
+            final var totalImages = page.locator("img").count();
+            final var imagesMissingAlt = page.locator("img:not([alt]), img[alt='']").count();
+            final var percentMissingAlt = totalImages > 0
+                    ? (imagesMissingAlt * 100.0) / totalImages
+                    : 0.0;
 
-        final var metaTitle = extractMetaContent(cleanedHtml, "title");
-        final var metaDescription = extractMetaContent(cleanedHtml, "description");
+            // Meta tags
+            final var metaTitle = page.title();
+            final var metaDescLocator = page.locator("meta[name='description']");
+            final var metaDescription = metaDescLocator.count() > 0
+                    ? metaDescLocator.first().getAttribute("content")
+                    : "";
 
-        return new WebAuditResult.FactualMetrics(
-                wordCount,
-                headingCounts,
-                ctaCount,
-                internalLinksCount,
-                externalLinksCount,
-                totalImages,
-                percentMissingAlt,
-                metaTitle,
-                metaDescription
-        );
+            return new WebAuditResult.FactualMetrics(
+                    wordCount,
+                    headingCounts,
+                    ctaCount,
+                    internalLinksCount,
+                    externalLinksCount,
+                    totalImages,
+                    percentMissingAlt,
+                    metaTitle,
+                    metaDescription != null ? metaDescription : ""
+            );
+        });
     }
 
     @Override
     public WebAuditResult audit(String url) {
-        final var html = readContent(url);
-        final var plainText = stripHtml(html);
-
+        final var plainText = stripHtml(url);
         final var factualMetrics = getFactualMetrics(url);
         final var aiInsights = aiService.generateInsights(factualMetrics, plainText);
         final var recommendations = aiService.recommendations(factualMetrics, aiInsights, plainText);
@@ -127,88 +133,38 @@ public class PlaywrightWebAuditService implements WebAuditService {
         return plainText.split("\\s+").length;
     }
 
-    private Map<String, Integer> countHeadings(String cleanedHtml) {
+    private Map<String, Integer> countHeadings(Page page) {
         final Map<String, Integer> headingCounts = new LinkedHashMap<>();
-        for (var i = 1; i <= 6; i++) {
-            final var tag = "h" + i;
-            final var pattern = Pattern.compile("<" + tag + "[\\s>]", Pattern.CASE_INSENSITIVE);
-            final var count = (int) pattern.matcher(cleanedHtml).results().count();
-            headingCounts.put(tag, count);
-        }
-        return headingCounts;
-    }
-
-    private int countCtas(String cleanedHtml) {
-        // Count buttons
-        final var buttonCount = (int) Pattern.compile("<button[\\s>]", Pattern.CASE_INSENSITIVE)
-                .matcher(cleanedHtml).results().count();
-
-        // Count input[type=submit] and input[type=button]
-        final var inputCtaCount = (int) Pattern.compile(
-                "<input[^>]*type\\s*=\\s*[\"'](submit|button)[\"']", Pattern.CASE_INSENSITIVE
-        ).matcher(cleanedHtml).results().count();
-
-        // Count links/buttons with CTA keywords in their text
-        var keywordCtaCount = 0;
-        final var anchorPattern = Pattern.compile("<a\\s[^>]*>(.*?)</a>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        final var matcher = anchorPattern.matcher(cleanedHtml);
-        while (matcher.find()) {
-            final var linkText = HTML_TAG_PATTERN.matcher(matcher.group(1)).replaceAll("").toLowerCase().trim();
-            for (final var keyword : CTA_KEYWORDS) {
-                if (linkText.contains(keyword)) {
-                    keywordCtaCount++;
-                    break;
-                }
+        for (var level = 1; level <= 6; level++) {
+            final var tag = "h" + level;
+            final var count = page.locator(tag).count();
+            if (count > 0) {
+                headingCounts.put(tag, count);
             }
         }
 
-        return buttonCount + inputCtaCount + keywordCtaCount;
+        return headingCounts;
     }
 
-    @SuppressWarnings("SameParameterValue")
-    private List<String> extractAttributeValues(String html, String tagName, String attrName) {
-        final var pattern = Pattern.compile(
-                "<" + tagName + "\\s[^>]*" + attrName + "\\s*=\\s*[\"']([^\"']*)[\"']",
-                Pattern.CASE_INSENSITIVE
-        );
-        return pattern.matcher(html).results()
-                .map(m -> m.group(1))
-                .toList();
+    private int countCtas(Page page) {
+        // Count <button>, <input type="submit">, <input type="button">,
+        // and <a> elements with role="button" or common CTA class names
+        return page.locator(
+                "button, input[type='submit'], input[type='button'], " +
+                        "a[role='button'], [class*='btn'], [class*='cta']"
+        ).count();
     }
 
-    @SuppressWarnings("SameParameterValue")
-    private List<String> extractTags(String html, String tagName) {
-        // Matches both self-closing and non-self-closing tags
-        final var pattern = Pattern.compile(
-                "<" + tagName + "\\s[^>]*/?>",
-                Pattern.CASE_INSENSITIVE
-        );
-
-        return pattern.matcher(html).results()
-                .map(MatchResult::group)
-                .toList();
-    }
-
-    private String extractMetaContent(String html, String name) {
-        if ("title".equalsIgnoreCase(name)) {
-            final var titlePattern = Pattern.compile("<title[^>]*>(.*?)</title>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-            final var matcher = titlePattern.matcher(html);
-            return matcher.find() ? matcher.group(1).trim() : "";
+    private <T> T runOnPage(String url, PageConsumer<T> consumer) {
+        try (BrowserContext context = browser.newContext()) {
+            final var page = context.newPage();
+            page.navigate(url);
+            page.waitForLoadState();
+            return consumer.accept(page);
         }
-        final var metaPattern = Pattern.compile(
-                "<meta\\s[^>]*name\\s*=\\s*[\"']" + Pattern.quote(name) + "[\"'][^>]*content\\s*=\\s*[\"']([^\"']*)[\"']",
-                Pattern.CASE_INSENSITIVE
-        );
-        var matcher = metaPattern.matcher(html);
-        if (matcher.find()) {
-            return matcher.group(1).trim();
-        }
-        // Try reversed attribute order (content before name)
-        final var reversedPattern = Pattern.compile(
-                "<meta\\s[^>]*content\\s*=\\s*[\"']([^\"']*)[\"'][^>]*name\\s*=\\s*[\"']" + Pattern.quote(name) + "[\"']",
-                Pattern.CASE_INSENSITIVE
-        );
-        matcher = reversedPattern.matcher(html);
-        return matcher.find() ? matcher.group(1).trim() : "";
+    }
+
+    private interface PageConsumer<T> {
+        T accept(Page page);
     }
 }

@@ -10,16 +10,16 @@ public interface WebAuditService {
     String readContent(String url);
 
     /**
-     * @param html - Raw HTML content of the webpage
+     * @param url - URL of the webpage to audit
      * @return - Cleaned text content with all HTML tags removed. This will be used for word count, messaging clarity analysis, and content depth evaluation.
      */
-    String stripHtml(String html);
+    String stripHtml(String url);
 
     /**
-     * @param html - Raw HTML content of the webpage
+     * @param url - URL of the webpage to audit
      * @return - HTML content with all <script> and <style> tags (and their content) removed. This will be used for accurate extraction of headings, links, images, and other structural elements without interference from scripts or styles.
      */
-    String stripScriptsAndStyles(String html);
+    String stripScriptsAndStyles(String url);
 
     /**
      * @param url - URL of the webpage to audit
