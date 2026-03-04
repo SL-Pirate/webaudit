@@ -25,6 +25,7 @@ dependencies {
 	implementation("com.microsoft.playwright:playwright:1.58.0")
 	implementation("org.projectlombok:lombok:1.18.42")
 	annotationProcessor("org.projectlombok:lombok:1.18.42")
+	implementation("com.google.code.gson:gson:2.13.2")
 	implementation("org.springframework.ai:spring-ai-starter-model-google-genai:1.1.2")
 
 	testImplementation("org.springframework.boot:spring-boot-starter-thymeleaf-test")

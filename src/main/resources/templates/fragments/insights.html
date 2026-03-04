@@ -1,0 +1,73 @@
+<!--
+  AI Insights Fragment
+  Rendered by /audit/insights endpoint.
+  On load, auto-triggers the recommendations HTMX call.
+-->
+<div xmlns:th="http://www.thymeleaf.org">
+
+    <!-- Hidden data carriers for chaining to recommendations -->
+    <input type="hidden" id="data-factualMetricsJson-2" name="factualMetricsJson" th:value="${factualMetricsJson}" />
+    <input type="hidden" id="data-insightsJson" name="insightsJson" th:value="${insightsJson}" />
+    <input type="hidden" id="data-contentText-2" name="contentText" th:value="${contentText}" />
+
+    <div class="audit-section" style="animation-delay: 0.15s;">
+        <div class="section-card">
+            <div class="section-title">
+                <div class="icon" style="background:rgba(139,92,246,0.12); color:var(--accent-violet);">🔮</div>
+                <div>
+                    <h2>AI Insights</h2>
+                    <div class="subtitle">Intelligent analysis powered by Gemini</div>
+                </div>
+            </div>
+            <div class="insights-grid">
+                <div class="insight-card">
+                    <div class="insight-label" style="color:var(--accent-indigo);">
+                        <span>🔍</span> SEO Structure
+                    </div>
+                    <div class="insight-text" th:text="${insights.seoStructure()}">SEO analysis…</div>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-label" style="color:var(--accent-cyan);">
+                        <span>💬</span> Messaging Clarity
+                    </div>
+                    <div class="insight-text" th:text="${insights.messagingClarity()}">Messaging analysis…</div>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-label" style="color:var(--accent-emerald);">
+                        <span>🎯</span> CTA Usage
+                    </div>
+                    <div class="insight-text" th:text="${insights.ctaUsage()}">CTA analysis…</div>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-label" style="color:var(--accent-amber);">
+                        <span>📚</span> Content Depth
+                    </div>
+                    <div class="insight-text" th:text="${insights.contentDepth()}">Content depth analysis…</div>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-label" style="color:var(--accent-rose);">
+                        <span>🖥️</span> UX Concerns
+                    </div>
+                    <div class="insight-text" th:text="${insights.uxConcerns()}">UX analysis…</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auto-trigger: fire recommendations request -->
+    <div id="rec-trigger"
+         hx-post="/audit/recommendations"
+         hx-trigger="load"
+         hx-target="#recommendations-container"
+         hx-swap="innerHTML"
+         hx-include="#data-factualMetricsJson-2, #data-insightsJson, #data-contentText-2"
+         style="display:none;">
+    </div>
+
+    <!-- Show loading state for recommendations & advance pipeline -->
+    <script>
+        advancePipeline(3);
+        document.getElementById('recommendations-container').innerHTML = '<div class="audit-section" style="animation-delay:0.25s;"><div class="section-card"><div class="loading-state"><div class="spinner"></div><p>Crafting recommendations\u2026</p><div class="loading-hint">Prioritizing actionable improvements</div></div></div></div>';
+    </script>
+</div>
+

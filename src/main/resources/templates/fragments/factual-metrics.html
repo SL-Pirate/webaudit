@@ -1,0 +1,89 @@
+<!--
+  Factual Metrics Fragment
+  Rendered by /audit/factual-metrics endpoint.
+  On load, auto-triggers the insights HTMX call with the serialized data.
+-->
+<div xmlns:th="http://www.thymeleaf.org">
+
+    <!-- Hidden data carriers for chaining -->
+    <input type="hidden" id="data-url" name="url" th:value="${url}" />
+    <input type="hidden" id="data-factualMetricsJson" name="factualMetricsJson" th:value="${factualMetricsJson}" />
+    <input type="hidden" id="data-contentText" name="contentText" th:value="${contentText}" />
+
+    <!-- The actual metrics display -->
+    <div class="audit-section" style="animation-delay: 0.1s;">
+        <div class="section-card">
+            <div class="section-title">
+                <div class="icon" style="background:rgba(99,102,241,0.12); color:var(--accent-indigo);">📊</div>
+                <div>
+                    <h2>Factual Metrics</h2>
+                    <div class="subtitle">Extracted directly from the page structure</div>
+                </div>
+            </div>
+            <div class="metrics-grid">
+                <div class="metric-tile accent-indigo">
+                    <div class="metric-label">Word Count</div>
+                    <div class="metric-value" th:text="${metrics.wordCount()}">0</div>
+                </div>
+                <div class="metric-tile accent-cyan">
+                    <div class="metric-label">CTAs Found</div>
+                    <div class="metric-value" th:text="${metrics.ctaCount()}">0</div>
+                </div>
+                <div class="metric-tile accent-emerald">
+                    <div class="metric-label">Internal Links</div>
+                    <div class="metric-value" th:text="${metrics.internalLinksCount()}">0</div>
+                </div>
+                <div class="metric-tile accent-amber">
+                    <div class="metric-label">External Links</div>
+                    <div class="metric-value" th:text="${metrics.externalLinksCount()}">0</div>
+                </div>
+                <div class="metric-tile accent-violet">
+                    <div class="metric-label">Total Images</div>
+                    <div class="metric-value" th:text="${metrics.totalImages()}">0</div>
+                </div>
+                <div class="metric-tile accent-rose">
+                    <div class="metric-label">Images Missing Alt</div>
+                    <div class="metric-value" th:text="${#numbers.formatDecimal(metrics.percentImagesMissingAltText(), 1, 1) + '%'}">0%</div>
+                </div>
+            </div>
+
+            <!-- Heading breakdown -->
+            <div class="headings-bar" th:if="${!metrics.headingCounts().isEmpty()}">
+                <span class="heading-chip" th:each="entry : ${metrics.headingCounts()}">
+                    <span class="tag" th:text="${entry.key}">h1</span>
+                    <span class="count">×<span th:text="${entry.value}">1</span></span>
+                </span>
+            </div>
+
+            <!-- Meta info -->
+            <div class="meta-block">
+                <h3>Meta Information</h3>
+                <div class="meta-item">
+                    <span class="meta-key">Title</span>
+                    <span class="meta-val" th:text="${metrics.metaTitle() ?: '— not set —'}">Page Title</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-key">Description</span>
+                    <span class="meta-val" th:text="${metrics.metaDescription() ?: '— not set —'}">Page description</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auto-trigger: fire insights request, including hidden inputs above -->
+    <div id="insights-trigger"
+         hx-post="/audit/insights"
+         hx-trigger="load"
+         hx-target="#insights-container"
+         hx-swap="innerHTML"
+         hx-include="#data-url, #data-factualMetricsJson, #data-contentText"
+         style="display:none;">
+    </div>
+
+    <!-- Show loading state for insights & advance pipeline -->
+    <script>
+        advancePipeline(2);
+        document.getElementById('insights-container').innerHTML = '<div class="audit-section" style="animation-delay:0.2s;"><div class="section-card"><div class="loading-state"><div class="spinner"></div><p>Generating AI insights\u2026</p><div class="loading-hint">Analyzing content quality, SEO, and messaging</div></div></div></div>';
+    </script>
+</div>
+

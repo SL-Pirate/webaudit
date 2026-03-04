@@ -1,0 +1,36 @@
+<!--
+  Recommendations Fragment
+  Rendered by /audit/recommendations endpoint.
+  Final step in the chain — marks pipeline as complete.
+-->
+<div xmlns:th="http://www.thymeleaf.org">
+    <div class="audit-section" style="animation-delay: 0.15s;">
+        <div class="section-card">
+            <div class="section-title">
+                <div class="icon" style="background:rgba(16,185,129,0.12); color:var(--accent-emerald);">🚀</div>
+                <div>
+                    <h2>Recommendations</h2>
+                    <div class="subtitle">Prioritized action items for improvement</div>
+                </div>
+            </div>
+            <div class="rec-list">
+                <div class="rec-item" th:each="rec : ${recommendations}">
+                    <div th:class="${rec.priority() le 2 ? 'rec-priority p-high' : (rec.priority() le 5 ? 'rec-priority p-med' : 'rec-priority p-low')}"
+                         th:text="${'#' + rec.priority()}">
+                        #1
+                    </div>
+                    <div class="rec-body">
+                        <h4 th:text="${rec.actionItem()}">Action item</h4>
+                        <p th:text="${rec.reasoning()}">Reasoning tied to metrics</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Complete the pipeline -->
+    <script>
+        completePipeline();
+    </script>
+</div>
+

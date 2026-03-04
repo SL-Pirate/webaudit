@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Results — Aura.AI</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --bg-deep: #05060f;
+            --bg-surface: #0c0e1a;
+            --bg-card: rgba(15, 18, 35, 0.85);
+            --border-subtle: rgba(99, 102, 241, 0.12);
+            --border-glow: rgba(99, 102, 241, 0.35);
+            --text-primary: #e8ecf4;
+            --text-secondary: #8892a8;
+            --text-muted: #5a6478;
+            --accent-indigo: #6366f1;
+            --accent-violet: #8b5cf6;
+            --accent-cyan: #06b6d4;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --gradient-primary: linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            font-family: 'Space Grotesk', system-ui, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background orbs */
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.15;
+            z-index: 0;
+            animation: orbFloat 20s ease-in-out infinite;
+        }
+
+        body::before {
+            width: 600px;
+            height: 600px;
+            background: var(--accent-indigo);
+            top: -200px;
+            left: -100px;
+        }
+
+        body::after {
+            width: 500px;
+            height: 500px;
+            background: var(--accent-cyan);
+            bottom: -150px;
+            right: -100px;
+            animation-delay: -10s;
+        }
+
+        @keyframes orbFloat {
+            0%, 100% {
+                transform: translate(0, 0) scale(1);
+            }
+            33% {
+                transform: translate(60px, 40px) scale(1.1);
+            }
+            66% {
+                transform: translate(-40px, -30px) scale(0.95);
+            }
+        }
+
+        .page-wrapper {
+            position: relative;
+            z-index: 1;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 3rem 2rem 6rem;
+        }
+
+        /* Header */
+        .audit-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .audit-header .logo {
+            font-size: 1.2rem;
+            font-weight: 300;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .audit-header h1 {
+            font-size: 2rem;
+            font-weight: 300;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .audit-header h1 span {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .audit-url {
+            display: inline-block;
+            padding: 0.4rem 1.2rem;
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid var(--border-subtle);
+            border-radius: 100px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+            margin-top: 0.75rem;
+            word-break: break-all;
+        }
+
+        /* Error state */
+        .error-container {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .error-container .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .error-container h2 {
+            font-size: 1.8rem;
+            font-weight: 400;
+            color: var(--accent-rose);
+            margin-bottom: 1rem;
+        }
+
+        .error-container p {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .btn-home {
+            display: inline-block;
+            padding: 0.8rem 2rem;
+            background: var(--accent-indigo);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-home:hover {
+            background: #4f46e5;
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Pipeline progress */
+        .pipeline {
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            margin-bottom: 3rem;
+        }
+
+        .pipeline-step {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .pipeline-step .step-dot {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: all 0.5s ease;
+            background: var(--bg-surface);
+        }
+
+        .pipeline-step .step-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: color 0.5s ease;
+        }
+
+        .pipeline-connector {
+            width: 50px;
+            height: 2px;
+            background: var(--border-subtle);
+            align-self: center;
+            margin: 0 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pipeline-connector::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 100%;
+            background: var(--gradient-primary);
+            transition: width 0.8s ease;
+        }
+
+        .pipeline-step.active .step-dot {
+            border-color: var(--accent-indigo);
+            color: white;
+            background: var(--accent-indigo);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .pipeline-step.active .step-label {
+            color: var(--text-primary);
+        }
+
+        .pipeline-step.done .step-dot {
+            border-color: var(--accent-emerald);
+            color: white;
+            background: var(--accent-emerald);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .pipeline-step.done .step-label {
+            color: var(--accent-emerald);
+        }
+
+        .pipeline-connector.done::after {
+            width: 100%;
+        }
+
+        /* Sections */
+        .audit-section {
+            margin-bottom: 2.5rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeSlideIn 0.6s ease forwards;
+        }
+
+        @keyframes fadeSlideIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--gradient-primary);
+            opacity: 0.6;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title .icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .section-title h2 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .section-title .subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        /* Loading skeleton */
+        .loading-state {
+            text-align: center;
+            padding: 3rem 2rem;
+        }
+
+        .loading-state .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border-subtle);
+            border-top-color: var(--accent-indigo);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 1.5rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-state p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .loading-state .loading-hint {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Metrics grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .metric-tile {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .metric-tile:hover {
+            border-color: var(--border-glow);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .metric-tile .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-tile .metric-value {
+            font-size: 1.8rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+
+        .metric-tile.accent-indigo .metric-value {
+            color: var(--accent-indigo);
+        }
+
+        .metric-tile.accent-cyan .metric-value {
+            color: var(--accent-cyan);
+        }
+
+        .metric-tile.accent-emerald .metric-value {
+            color: var(--accent-emerald);
+        }
+
+        .metric-tile.accent-amber .metric-value {
+            color: var(--accent-amber);
+        }
+
+        .metric-tile.accent-violet .metric-value {
+            color: var(--accent-violet);
+        }
+
+        .metric-tile.accent-rose .metric-value {
+            color: var(--accent-rose);
+        }
+
+        /* Meta info */
+        .meta-block {
+            margin-top: 1.5rem;
+            padding: 1.25rem;
+            background: rgba(6, 182, 212, 0.04);
+            border: 1px solid rgba(6, 182, 212, 0.12);
+            border-radius: 10px;
+        }
+
+        .meta-block h3 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent-cyan);
+            margin-bottom: 0.75rem;
+        }
+
+        .meta-item {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .meta-item .meta-key {
+            color: var(--text-muted);
+            min-width: 100px;
+            font-weight: 500;
+        }
+
+        .meta-item .meta-val {
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        /* Headings breakdown */
+        .headings-bar {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .heading-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.75rem;
+            background: rgba(139, 92, 246, 0.08);
+            border: 1px solid rgba(139, 92, 246, 0.15);
+            border-radius: 100px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        .heading-chip .tag {
+            color: var(--accent-violet);
+            font-weight: 600;
+        }
+
+        .heading-chip .count {
+            color: var(--text-secondary);
+        }
+
+        /* Insights cards */
+        .insights-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 700px) {
+            .insights-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .insight-card {
+            padding: 1.25rem;
+            background: rgba(255, 255, 255, 0.015);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .insight-card:hover {
+            border-color: var(--border-glow);
+        }
+
+        .insight-card:last-child:nth-child(odd) {
+            grid-column: 1 / -1;
+        }
+
+        .insight-card .insight-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .insight-card .insight-text {
+            font-size: 0.92rem;
+            line-height: 1.65;
+            color: var(--text-secondary);
+        }
+
+        /* Recommendations */
+        .rec-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .rec-item {
+            display: flex;
+            gap: 1.25rem;
+            padding: 1.25rem;
+            background: rgba(255, 255, 255, 0.015);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .rec-item:hover {
+            border-color: var(--border-glow);
+            transform: translateX(4px);
+        }
+
+        .rec-priority {
+            flex-shrink: 0;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .rec-priority.p-high {
+            background: rgba(244, 63, 94, 0.12);
+            color: var(--accent-rose);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+        }
+
+        .rec-priority.p-med {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--accent-amber);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .rec-priority.p-low {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--accent-emerald);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .rec-body h4 {
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 0.4rem;
+        }
+
+        .rec-body p {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+    </style>
+</head>
+<body>
+<div class="page-wrapper">
+
+    <!-- Error state -->
+    <div th:if="${error}" class="error-container">
+        <div class="error-icon">⚠️</div>
+        <h2>Audit Failed</h2>
+        <p th:text="${error}">Error message</p>
+        <a href="/" class="btn-home">← Return Home</a>
+    </div>
+
+    <!-- Normal audit flow -->
+    <div th:if="${url}" id="audit-flow">
+
+        <div class="audit-header">
+            <div class="logo">Aura.AI</div>
+            <h1>Audit <span>Results</span></h1>
+            <div class="audit-url" th:text="${url}">https://example.com</div>
+        </div>
+
+        <!-- Pipeline progress -->
+        <div class="pipeline" id="pipeline">
+            <div class="pipeline-step active" id="step-1">
+                <span class="step-dot">1</span>
+                <span class="step-label">Metrics</span>
+            </div>
+            <div class="pipeline-connector" id="conn-1"></div>
+            <div class="pipeline-step" id="step-2">
+                <span class="step-dot">2</span>
+                <span class="step-label">Insights</span>
+            </div>
+            <div class="pipeline-connector" id="conn-2"></div>
+            <div class="pipeline-step" id="step-3">
+                <span class="step-dot">3</span>
+                <span class="step-label">Recommendations</span>
+            </div>
+        </div>
+
+        <!-- Factual Metrics: auto-triggers on load -->
+        <div id="factual-metrics-container"
+             th:hx-get="@{/audit/factual-metrics(url=${url})}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="audit-section" style="animation-delay: 0.1s;">
+                <div class="section-card">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Extracting factual metrics…</p>
+                        <div class="loading-hint">Navigating to the page &amp; analyzing structure</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Insights: populated by HTMX chain -->
+        <div id="insights-container">
+            <!-- Will be filled after factual metrics load -->
+        </div>
+
+        <!-- Recommendations: populated by HTMX chain -->
+        <div id="recommendations-container">
+            <!-- Will be filled after insights load -->
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // Pipeline progress management
+    function advancePipeline(step) {
+        if (step >= 2) {
+            document.getElementById('step-1').classList.remove('active');
+            document.getElementById('step-1').classList.add('done');
+            document.getElementById('step-1').querySelector('.step-dot').textContent = '✓';
+            document.getElementById('conn-1').classList.add('done');
+            document.getElementById('step-2').classList.add('active');
+        }
+        if (step >= 3) {
+            document.getElementById('step-2').classList.remove('active');
+            document.getElementById('step-2').classList.add('done');
+            document.getElementById('step-2').querySelector('.step-dot').textContent = '✓';
+            document.getElementById('conn-2').classList.add('done');
+            document.getElementById('step-3').classList.add('active');
+        }
+    }
+
+    function completePipeline() {
+        document.getElementById('step-3').classList.remove('active');
+        document.getElementById('step-3').classList.add('done');
+        document.getElementById('step-3').querySelector('.step-dot').textContent = '✓';
+    }
+</script>
+</body>
+</html>
+
