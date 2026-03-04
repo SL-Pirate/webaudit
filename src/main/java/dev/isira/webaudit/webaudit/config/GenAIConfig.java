@@ -11,7 +11,7 @@ import java.io.IOException;
 public class GenAIConfig {
     @Bean
     public ChatClient chatClient(ChatModel chatModel) throws IOException {
-        final var resource = getClass().getClassLoader().getResource("default-prompt.md");
+        final var resource = getClass().getClassLoader().getResource("system-prompt.md");
         if (resource == null) {
             throw new RuntimeException("Could not find default prompt resource");
         }
