@@ -26,13 +26,4 @@ public interface WebAuditService {
      * @return - A structured object containing all factual metrics extracted from the webpage, such as word count, heading counts, CTA count, link counts, image analysis, and meta information. This will be used as the basis for generating AI insights and recommendations.
      */
     WebAuditResult.FactualMetrics getFactualMetrics(String url);
-
-    /**
-     * A combined method that orchestrates the entire auditing process for a given webpage URL. It retrieves the webpage content, extracts factual metrics, generates AI insights based on those metrics and the content, and then produces prioritized recommendations for improving the webpage. The result is a comprehensive audit report that includes all relevant information for understanding the current state of the webpage and actionable steps for enhancement.
-     * Reuses the other methods in this interface to perform the necessary steps of the auditing process, ensuring a clean separation of concerns and modularity in the implementation.
-     *
-     * @param url - URL of the webpage to audit
-     * @return - A comprehensive audit result that includes factual metrics, AI-generated insights, and prioritized recommendations for improving the webpage. This method orchestrates the entire auditing process, from content retrieval and metric extraction to AI analysis and recommendation generation.
-     */
-    WebAuditResult audit(String url);
 }

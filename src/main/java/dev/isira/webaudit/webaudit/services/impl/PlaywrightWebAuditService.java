@@ -4,7 +4,6 @@ import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 import dev.isira.webaudit.webaudit.models.WebAuditResult;
-import dev.isira.webaudit.webaudit.services.AiService;
 import dev.isira.webaudit.webaudit.services.WebAuditService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +19,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PlaywrightWebAuditService implements WebAuditService {
     private final Browser browser;
-    private final AiService aiService;
 
     private static String stripScriptsAndStylesInternal(Page page) {
         page.evaluate("() => {" +
@@ -112,16 +110,6 @@ public class PlaywrightWebAuditService implements WebAuditService {
                     metaDescription != null ? metaDescription : ""
             );
         });
-    }
-
-    @Override
-    public WebAuditResult audit(String url) {
-        final var plainText = stripHtml(url);
-        final var factualMetrics = getFactualMetrics(url);
-        final var aiInsights = aiService.generateInsights(factualMetrics, plainText);
-        final var recommendations = aiService.recommendations(factualMetrics, aiInsights, plainText);
-
-        return new WebAuditResult(factualMetrics, aiInsights, recommendations);
     }
 
     // --- Private helper methods ---
