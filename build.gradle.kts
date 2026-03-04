@@ -21,6 +21,7 @@ repositories {
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
+	implementation("io.github.wimdeblauwe:htmx-spring-boot:5.0.0")
 	implementation("com.microsoft.playwright:playwright:1.58.0")
 	implementation("org.projectlombok:lombok:1.18.42")
 	annotationProcessor("org.projectlombok:lombok:1.18.42")
