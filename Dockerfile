@@ -1,7 +1,7 @@
 # ==========================================
 # Stage 1: Build the application
 # ==========================================
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM eclipse-temurin:21-jdk-noble AS builder
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ RUN ./gradlew clean bootJar -x test --no-daemon
 # ==========================================
 # Stage 2: Create the lean runtime image
 # ==========================================
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:21-jre-noble
 
 WORKDIR /app
 
