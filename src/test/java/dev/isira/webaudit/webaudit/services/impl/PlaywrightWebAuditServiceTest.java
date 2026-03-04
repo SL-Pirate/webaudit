@@ -3,23 +3,16 @@ package dev.isira.webaudit.webaudit.services.impl;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.Playwright;
 import com.sun.net.httpserver.HttpServer;
-import dev.isira.webaudit.webaudit.models.WebAuditResult;
-import dev.isira.webaudit.webaudit.services.AiService;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
 /**
  * Tests for {@link PlaywrightWebAuditService}.
@@ -35,7 +28,6 @@ class PlaywrightWebAuditServiceTest {
     private static HttpServer httpServer;
     private static int port;
 
-    private AiService aiService;
     private PlaywrightWebAuditService service;
 
     // ---------------------------------------------------------------
@@ -85,8 +77,7 @@ class PlaywrightWebAuditServiceTest {
 
     @BeforeEach
     void setUp() {
-        aiService = Mockito.mock(AiService.class);
-        service = new PlaywrightWebAuditService(browser, aiService);
+        service = new PlaywrightWebAuditService(browser);
     }
 
     // ================================================================
