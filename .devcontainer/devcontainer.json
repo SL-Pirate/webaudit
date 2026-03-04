@@ -1,0 +1,39 @@
+{
+  "name": "Java 21 with Playwright",
+  "image": "mcr.microsoft.com/devcontainers/java:21-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "21",
+      "installGradle": "true",
+      "gradleVersion": "8.12"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    }
+  },
+  "postCreateCommand": "npx playwright install --with-deps && gradle --version",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vscjava.vscode-gradle",
+        "ms-playwright.playwright"
+      ],
+      "settings": {
+        "java.configuration.runtimes": [
+          {
+            "name": "JavaSE-21",
+            "default": true
+          }
+        ]
+      }
+    },
+    "jetbrains": {
+      "plugins": [
+        "com.intellij.java",
+        "org.jetbrains.plugins.gradle"
+      ]
+    }
+  },
+  "forwardPorts": [8080]
+}
