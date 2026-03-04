@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: webaudit
+
+  ai:
+    google:
+      genai:
+        api-key: "${GOOGLE_GENAI_API_KEY}"
+        chat:
+          options:
+            model: "gemini-2.5-flash"
