@@ -16,7 +16,7 @@ public class AiServiceImpl implements AiService {
 
     @Override
     public WebAuditResult.AiInsights generateInsights(WebAuditResult.FactualMetrics factualMetrics, String content) {
-        final var prompt = "Based on the following factual metrics and content, provide insights on SEO structure, messaging clarity, CTA usage, content depth, and UX concerns.\n" +
+        final var prompt = "Based on the following factual metrics and content, provide insights (specific and non-generic) on SEO structure, messaging clarity, CTA usage, content depth, and UX concerns.\n" +
                 "factualMetrics: " + factualMetrics + "\n" +
                 "content: " + content + "\n";
         return chatClient
@@ -27,8 +27,12 @@ public class AiServiceImpl implements AiService {
     }
 
     @Override
-    public List<WebAuditResult.Recommendation> recommendations(WebAuditResult.FactualMetrics factualMetrics, WebAuditResult.AiInsights aiInsights, String content) {
-        final var prompt = "Based on the following factual metrics, AI insights, and content, provide a list of 3 to 5 prioritized recommendations for improving the webpage.\n" +
+    public List<WebAuditResult.Recommendation> recommendations(
+            WebAuditResult.FactualMetrics factualMetrics,
+            WebAuditResult.AiInsights aiInsights,
+            String content
+    ) {
+        final var prompt = "Based on the following factual metrics, AI insights, and content, provide a list of 3 to 5 prioritized concise and actionable recommendations for improving the webpage.\n" +
                 "factualMetrics: " + factualMetrics + "\n" +
                 "aiInsights: " + aiInsights + "\n" +
                 "content: " + content + "\n";
