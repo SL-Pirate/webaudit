@@ -146,6 +146,7 @@ public class PlaywrightWebAuditService implements WebAuditService {
                 final var browser = playwright.chromium().launch()
         ) {
             final var page = browser.newPage();
+            page.setDefaultTimeout(10000);
             page.navigate(url);
             page.waitForLoadState();
             return consumer.accept(page);
