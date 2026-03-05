@@ -28,14 +28,19 @@ public class AiServiceImpl implements AiService {
 
     @Override
     public List<WebAuditResult.Recommendation> recommendations(WebAuditResult.FactualMetrics factualMetrics, WebAuditResult.AiInsights aiInsights, String content) {
-        final var prompt = "Based on the following factual metrics, AI insights, and content, provide a list of prioritized recommendations for improving the webpage.\n" +
+        final var prompt = "Based on the following factual metrics, AI insights, and content, provide a list of 3 to 5 prioritized recommendations for improving the webpage.\n" +
                 "factualMetrics: " + factualMetrics + "\n" +
                 "aiInsights: " + aiInsights + "\n" +
                 "content: " + content + "\n";
-        return chatClient
+        final List<WebAuditResult.Recommendation> recommendations = chatClient
                 .prompt(prompt)
                 .call()
                 .entity(new ParameterizedTypeReference<>() {
                 });
+        if (recommendations == null || recommendations.isEmpty()) {
+            return List.of();
+        }
+
+        return recommendations.subList(0, Math.min(recommendations.size(), 5));
     }
 }
