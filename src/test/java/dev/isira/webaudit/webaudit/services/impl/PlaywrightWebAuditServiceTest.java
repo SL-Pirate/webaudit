@@ -77,7 +77,7 @@ class PlaywrightWebAuditServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PlaywrightWebAuditService(browser);
+        service = new PlaywrightWebAuditService();
     }
 
     // ================================================================
